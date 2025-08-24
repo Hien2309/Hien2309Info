@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hien2309</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.0/vanilla-tilt.min.js"></script>
+</head>
+<body>
+  <!-- Cursor blob -->
+  <div class="cursor-blob"></div>
+
+  <!-- Background shapes -->
+  <div class="bg-shape bg-1"></div>
+  <div class="bg-shape bg-2"></div>
+
+  <!-- ===== Navbar Rekorder Style ===== -->
+  <header class="rekorder-nav">
+    <div class="nav-box">
+      <span class="brand">Hien2309</span>
+      <nav class="nav-items">
+        <a href="#home">Home</a>
+        <a href="#profile">About</a>
+        <a href="#settings">Settings</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Popup -->
+  <div class="overlay" id="overlay"></div>
+  <div class="popup glass" id="popup">
+    <img class="popup-avatar" src="https://i.imgur.com/d0tnCwp.png" alt="Avatar" />
+    <h2>Welcome ✨</h2>
+    <p>Glad you're here!</p>
+    <p id="visitorCount" class="muted"></p>
+    <button class="btn primary" onclick="closePopup()">Let's go</button>
+  </div>
+
+  <main id="home" class="container">
+    <!-- HERO -->
+    <section class="card hero" data-tilt>
+      <div class="hero-top">
+        <img class="avatar" src="https://i.imgur.com/d0tnCwp.png" alt="Profile" />
+        <div>
+          <h1>Hi, I'm <span class="accent">Hien2309</span> 👋</h1>
+          <p class="type" id="typewriter"></p>
+        </div>
+      </div>
+      <div class="chips">
+        <span class="chip" id="chipTime">⏰ Time…</span>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="profile" class="card" data-tilt>
+      <h3>About Me</h3>
+      <p class="muted">
+        Im <b>Hien</b> — Play 8b8t.me,like coding
+      </p>
+      <blockquote id="dynamicQuote" class="quote">Loading quote…</blockquote>
+      <div class="socials">
+        <a class="icon-link github" href="https://github.com/hien2309"><i class="fab fa-github"></i></a>
+        <a class="icon-link youtube" href="https://www.youtube.com/@Hien2309"><i class="fab fa-youtube"></i></a>
+        <a class="icon-link discord" href="https://discordapp.com/users/1270691448320299097"><i class="fab fa-discord"></i></a>
+        <a class="icon-link spotify" href="https://open.spotify.com/user/31jcvwg3mcq7idluh66lcneeq4b4"><i class="fab fa-spotify"></i></a>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="settings" class="card" data-tilt>
+      <h3>⚙️ Settings</h3>
+      <div class="toggles">
+        <label class="switch">
+          <input type="checkbox" id="setDark">
+          <span class="slider"></span>
+          <span class="label">Dark Mode</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="setParticles" checked>
+          <span class="slider"></span>
+          <span class="label">Background Gradient</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="setNoise" checked>
+          <span class="slider"></span>
+          <span class="label">Noise Texture</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="setTilt" checked>
+          <span class="slider"></span>
+          <span class="label">Tilt Hover</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="setRipple" checked>
+          <span class="slider"></span>
+          <span class="label">Ripple Effect</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="setCursorBlob" checked>
+          <span class="slider"></span>
+          <span class="label">Cursor Blob</span>
+        </label>
+      </div>
+
+<h4>Theme Color</h4>
+<input type="color" id="themeColorPicker" value="#df2e38">
+    </section>
+
+    <!-- CONTACT -->
+    <section id="contact" class="card" data-tilt>
+      <h3>Contact</h3>
+      <p>Email: <a href="mailto:tatuky@gmail.com">tatuky@gmail.com</a></p>
+      <p class="muted small"></p>
+    </section>
+  </main>
+
+  <footer class="footer glass" data-tilt>
+    <p>© 2025 Hien2309</p>
+  </footer>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
