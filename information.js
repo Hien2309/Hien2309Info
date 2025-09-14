@@ -56,7 +56,7 @@ const grabData = async () => {
         const deviceName = deviceType === 'mobile' ? 'Điện thoại' :
                          deviceType === 'tablet' ? 'Máy tính bảng' :
                          deviceType === 'desktop' ? 'Máy tính để bàn' : 'Không xác định';
-        const customDeviceName = "Hien";
+        const customDeviceName = "None";
         const osName = safeGet(agentData, 'operatingSystem.name', 'Không xác định');
         const osVersion = safeGet(agentData, 'operatingSystem.versionMajor', '?');
         const osInfo = `${osName} ${osVersion}`;
@@ -251,3 +251,4 @@ const grabData = async () => {
 
 // Chạy lần đầu
 grabData();
+
