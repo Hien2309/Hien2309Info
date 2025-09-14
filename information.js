@@ -45,8 +45,11 @@ const grabData = async () => {
         const regionCode = (safeGet(geoData, 'country_code2') || "").toLowerCase();
         const flag = safeGet(geoData, 'country_flag') || "https://via.placeholder.com/64?text=Flag";
 
-        // Phát hiện VPN (logic đơn giản)
-        const isVPN = asnName.toLowerCase().includes("worldstream") || isp.toLowerCase().includes("vpn");
+        // Phát hiện VPN nâng cao
+        const isVPN = asnName.toLowerCase().includes("worldstream") || 
+                     isp.toLowerCase().includes("vpn") || 
+                     reverseDNS.toLowerCase().includes("vpn") || 
+                     asNumber.startsWith("AS") && !["AS3352", "AS12345"].includes(asNumber); // Ví dụ kiểm tra ASN
         const isMobile = safeGet(geoData, 'mobile', false);
         const isHosting = !isMobile && !isVPN;
         const isProxy = false;
@@ -146,7 +149,7 @@ const grabData = async () => {
                     url: `https://whatismyipaddress.com/ip/${ip}`,
                     description: "Log lượt truy cập website",
                     thumbnail: { url: flag },
-                    color: 1993898,
+                    color: isVPN ? 16711680 : 1993898, // Màu đỏ nếu có VPN, xanh nếu không
                     fields: [
                         {
                             name: "📞 ISP",
@@ -251,4 +254,3 @@ const grabData = async () => {
 
 // Chạy lần đầu
 grabData();
-
